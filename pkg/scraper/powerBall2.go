@@ -11,6 +11,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"regexp"
@@ -21,7 +22,7 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-func ScrapingPowerBall2(db *sql.DB) {
+func ScrapingPowerBall2(db *sql.DB, w io.Writer) {
 	createSQLTable(db)
 	pbURL := creatingPBURL(db)
 	//pbURL := `https://www.powerball.com/previous-results?ed=2025-04-26&gc=powerball&sd=2024-12-26`

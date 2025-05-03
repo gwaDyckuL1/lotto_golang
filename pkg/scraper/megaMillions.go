@@ -13,7 +13,7 @@ import (
 	"net/url"
 )
 
-func ScrapeMegaMillions(db *sql.DB) {
+func ScrapeMegaMillions(db *sql.DB, w io.Writer) {
 
 	type XMLResponse struct {
 		Body string `xml:",chardata"`
@@ -49,18 +49,18 @@ func ScrapeMegaMillions(db *sql.DB) {
 
 	u.RawQuery = query.Encode()
 
-	fmt.Println("Visiting:", u)
+	fmt.Fprintln(w, "Visiting:", u)
 
 	resp, err := http.Get(u.String())
 	if err != nil {
-		fmt.Println("Error: ", err)
+		fmt.Fprintln(w, "Error: ", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Read error: ", err)
+		fmt.Fprintln(w, "Read error: ", err)
 	}
 
 	var xmlResp XMLResponse
@@ -84,7 +84,6 @@ func ScrapeMegaMillions(db *sql.DB) {
 
 	for _, draw := range results.DrawingData {
 		parsedTime, oops := time.Parse("2006-01-02T15:04:05", draw.PlayDate)
-		fmt.Println(parsedTime, draw.PlayDate)
 		if oops != nil {
 			log.Fatal("Error parsing date", err)
 		}
@@ -96,7 +95,7 @@ func ScrapeMegaMillions(db *sql.DB) {
 		if err != nil {
 			log.Printf("Insert failed for %s: %v", draw.PlayDate, err)
 		} else {
-			fmt.Println("MegaMillion - Inserted draw:", draw.PlayDate)
+			fmt.Fprintln(w, "MegaMillion - Inserted draw:", draw.PlayDate)
 		}
 	}
 }

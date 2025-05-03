@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,19 +19,26 @@ const (
 	screenAnalysisSelect
 )
 
+type logMsg string
+type logWriter struct {
+	ch chan logMsg
+}
+type scrapeDoneMsg struct{}
 type screen int
 type model struct {
 	choices          []string
 	cursor           int
 	db               *sql.DB
+	logs             []string
 	screen           screen
 	selectedGame     string
 	selectedAnalysis string
+	logCh            chan logMsg
 }
 
 var analysisOptions = []string{"Counts", "Probabilities", "TopN"}
 var gameOptions = []string{"Mega Millions", "Powerball"}
-var scrapeFuncs = map[string]func(db *sql.DB){
+var scrapeFuncs = map[string]func(db *sql.DB, w io.Writer){
 	"Mega Millions": scraper.ScrapeMegaMillions,
 	"Powerball":     scraper.ScrapingPowerBall2,
 }
@@ -55,8 +63,41 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
+func (w logWriter) Write(p []byte) (int, error) {
+	w.ch <- logMsg(p)
+	return len(p), nil
+}
+
+func gettingStatusUpdates(m model, fn func(*sql.DB, io.Writer)) (model, tea.Cmd) {
+	logCh := make(chan logMsg)
+	m.logCh = logCh
+
+	go func() {
+		fn(m.db, logWriter{ch: logCh})
+		close(logCh)
+	}()
+
+	return m, readLogChannel(logCh)
+}
+
+func readLogChannel(ch <-chan logMsg) tea.Cmd {
+	return func() tea.Msg {
+		if msg, ok := <-ch; ok {
+			return msg
+		}
+		return scrapeDoneMsg{}
+	}
+
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case logMsg:
+		m.logs = append(m.logs, string(msg))
+		return m, readLogChannel(m.logCh)
+	case scrapeDoneMsg:
+		m.logs = append(m.logs, "This step done")
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -98,11 +139,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedGame = m.choices[m.cursor]
 				m.screen = screenScraping
 				m.choices = []string{"Return to Scraping Options"}
+				m.logs = nil
 				if fn, ok := scrapeFuncs[m.selectedGame]; ok {
-					go fn(m.db)
-				} else {
-					fmt.Println("That game is not known")
+					return gettingStatusUpdates(m, fn)
 				}
+				m.logs = append(m.logs, "This game is not known")
+
 			case screenScraping:
 				m.screen = screenScrape
 				m.cursor = 0
@@ -129,6 +171,9 @@ func (m model) View() string {
 		b.WriteString("Select the game you want to scrape\n")
 	case screenScraping:
 		b.WriteString(fmt.Sprintf("Scraping %s\n", m.selectedGame))
+		for _, line := range m.logs {
+			b.WriteString(line + "\n")
+		}
 	}
 
 	for i, choice := range m.choices {
