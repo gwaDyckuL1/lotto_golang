@@ -3,6 +3,7 @@ package scraper
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"strconv"
@@ -11,7 +12,7 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func ScrapingPowerBall(db *sql.DB) {
+func ScrapingPowerBall(db *sql.DB, w io.Writer) {
 
 	type Drawing struct {
 		Date       string
@@ -26,7 +27,7 @@ func ScrapingPowerBall(db *sql.DB) {
 	seenDates := make(map[string]bool)
 
 	createSQLTable(db)
-	pbURL := creatingURL(db)
+	pbURL, recentDate := creatingURL(db)
 
 	c := colly.NewCollector(
 		colly.AllowedDomains("www.powerball.com"),
@@ -36,7 +37,7 @@ func ScrapingPowerBall(db *sql.DB) {
 	for {
 
 		pgURL := pbURL + "&pg=" + strconv.Itoa(pageNum)
-		fmt.Println("Visiting", pgURL)
+		fmt.Fprintln(w, "Visiting", pgURL)
 		var pageHadCards bool
 		c.OnHTML("div.card-body", func(e *colly.HTMLElement) {
 			pageHadCards = true
@@ -89,15 +90,20 @@ func ScrapingPowerBall(db *sql.DB) {
 		}
 
 		if !pageHadCards {
-			fmt.Println("No more results")
-			break
+			date, err := time.Parse("2006-01-02", recentDate)
+			if err != nil {
+				break
+			} else {
+				fmt.Fprintln(w, "Scraped Powerball information going back to", date.Format("2006-01-02"))
+				break
+			}
 		}
 
 		pageNum++
 	}
 
 	c.OnScraped(func(_ *colly.Response) {
-		fmt.Println("Finished with powerball")
+		fmt.Fprintln(w, "Finished with powerball")
 	})
 
 	stmt, err := db.Prepare(`
@@ -116,12 +122,12 @@ func ScrapingPowerBall(db *sql.DB) {
 		if err != nil {
 			log.Println("Unable to insert draw date: ", draw.Date, err)
 		} else {
-			fmt.Println("Inserted draw data for date: ", draw.Date)
+			fmt.Fprintln(w, "Inserted draw data for date: ", draw.Date)
 		}
 	}
 }
 
-func creatingURL(db *sql.DB) string {
+func creatingURL(db *sql.DB) (string, string) {
 	u, _ := url.Parse("https://www.powerball.com/previous-results?gc=powerball&sd=2024-02-14&ed=2024-04-13")
 	var mostRecent sql.NullString
 
@@ -146,7 +152,7 @@ func creatingURL(db *sql.DB) string {
 	query.Set("ed", time.Now().Format("2006-01-02"))
 
 	u.RawQuery = query.Encode()
-	return u.String()
+	return u.String(), mostRecent.String
 }
 
 func createSQLTable(db *sql.DB) {

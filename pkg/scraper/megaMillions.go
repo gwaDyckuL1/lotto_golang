@@ -98,6 +98,7 @@ func ScrapeMegaMillions(db *sql.DB, w io.Writer) {
 			fmt.Fprintln(w, "MegaMillion - Inserted draw:", draw.PlayDate)
 		}
 	}
+	fmt.Fprintln(w, "Scraped Mega Million information going back to", recentDate.Format("2006-01-02"))
 }
 
 func createMegaTable(db *sql.DB) {

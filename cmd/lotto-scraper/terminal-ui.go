@@ -40,7 +40,7 @@ var analysisOptions = []string{"Counts", "Probabilities", "TopN"}
 var gameOptions = []string{"Mega Millions", "Powerball"}
 var scrapeFuncs = map[string]func(db *sql.DB, w io.Writer){
 	"Mega Millions": scraper.ScrapeMegaMillions,
-	"Powerball":     scraper.ScrapingPowerBall2,
+	"Powerball":     scraper.ScrapingPowerBall,
 }
 
 func mainTeaTerminal(db *sql.DB) {
@@ -96,7 +96,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logs = append(m.logs, string(msg))
 		return m, readLogChannel(m.logCh)
 	case scrapeDoneMsg:
-		m.logs = append(m.logs, "This step done")
+		m.logs = append(m.logs, "This step done\n")
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -122,6 +122,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case screenAnalysisSelect:
 				m.selectedAnalysis = m.choices[m.cursor]
 				m.screen = screenAnalysisRunning
+				m.cursor = 0
 				m.choices = []string{"Return to Analysis Options"}
 
 			case screenMain:
@@ -139,6 +140,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedGame = m.choices[m.cursor]
 				m.screen = screenScraping
 				m.choices = []string{"Return to Scraping Options"}
+				m.cursor = 0
 				m.logs = nil
 				if fn, ok := scrapeFuncs[m.selectedGame]; ok {
 					return gettingStatusUpdates(m, fn)
