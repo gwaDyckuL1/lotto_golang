@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gwaDyckuL1/lotto-scraper/pkg/analysis"
 	"github.com/gwaDyckuL1/lotto-scraper/pkg/scraper"
 )
 
@@ -36,7 +37,11 @@ type model struct {
 	logCh            chan logMsg
 }
 
-var analysisOptions = []string{"Counts", "Probabilities", "TopN"}
+var analysisFuncs = map[string]func(db *sql.DB, w io.Writer, option string){
+	"Mega Millions": analysis.AnalyzeMegaMillions,
+	"Powerball":     analysis.AnalyzePowerball,
+}
+var analysisOptions = []string{"Counts", "Probabilities", "Top5"}
 var gameOptions = []string{"Mega Millions", "Powerball"}
 var scrapeFuncs = map[string]func(db *sql.DB, w io.Writer){
 	"Mega Millions": scraper.ScrapeMegaMillions,
@@ -123,8 +128,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selectedAnalysis = m.choices[m.cursor]
 				m.screen = screenAnalysisRunning
 				m.cursor = 0
+				m.logs = nil
 				m.choices = []string{"Return to Analysis Options"}
-
+				if fn, ok := analysisFuncs[m.selectedGame]; ok {
+					return gettingStatusUpdates(m, func(db *sql.DB, w io.Writer) {
+						fn(db, w, m.selectedAnalysis)
+					})
+				}
+				m.logs = append(m.logs, "This game is not known")
 			case screenMain:
 				switch m.choices[m.cursor] {
 				case "Scrape Data":
@@ -167,6 +178,9 @@ func (m model) View() string {
 		b.WriteString(fmt.Sprintf("What information do you want for %s\n", m.selectedGame))
 	case screenAnalysisRunning:
 		b.WriteString(fmt.Sprintf("Getting %s for %s\n", m.selectedAnalysis, m.selectedGame))
+		for _, line := range m.logs {
+			b.WriteString(line + "\n")
+		}
 	case screenMain:
 		b.WriteString("***Main Menu***\nWhat do you want to do?\n")
 	case screenScrape:

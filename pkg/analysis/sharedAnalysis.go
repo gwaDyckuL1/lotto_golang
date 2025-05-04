@@ -3,6 +3,7 @@ package analysis
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
 	"sort"
 
@@ -59,7 +60,7 @@ func findProbabilities(numMap map[int]int, numProb map[int]float64) {
 	}
 }
 
-func barGraph[T int | float64](data map[int]T, tableName string, yTitle string) {
+func barGraph[T int | float64](data map[int]T, tableName string, yTitle string, w io.Writer) {
 
 	p := plot.New()
 	p.Title.Text = tableName
@@ -97,5 +98,5 @@ func barGraph[T int | float64](data map[int]T, tableName string, yTitle string) 
 	if err := p.Save(width, height, tableName); err != nil {
 		log.Fatalf("Failed to save plot: %v", err)
 	}
-	fmt.Println("Chart saved as: ", tableName)
+	fmt.Fprintln(w, "Chart saved as: ", tableName)
 }

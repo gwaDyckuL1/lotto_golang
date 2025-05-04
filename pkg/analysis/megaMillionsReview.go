@@ -3,13 +3,13 @@ package analysis
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"strings"
 )
 
-func AnalyzeMegaMillions(db *sql.DB) {
+func AnalyzeMegaMillions(db *sql.DB, w io.Writer, option string) {
 	whiteBalls := make(map[int]int)
 	megaBall := make(map[int]int)
-	whiteBallProbability := make(map[int]float64)
-	megaBallProbability := make(map[int]float64)
 
 	for num := 1; num < 71; num++ {
 		whiteBalls[num] = 0
@@ -24,13 +24,26 @@ func AnalyzeMegaMillions(db *sql.DB) {
 	numbersByColumn(db, "megaMillion", "N5", whiteBalls)
 	numbersByColumn(db, "megaMillion", "MegaBall", megaBall)
 
-	findProbabilities(whiteBalls, whiteBallProbability)
-	findProbabilities(megaBall, megaBallProbability)
+	switch option {
+	case "Counts":
+		barGraph(whiteBalls, "Mega Millions White Ball Count", "White Ball Count", w)
+		barGraph(megaBall, "Mega Millions Mega Ball Count", "Mega Ball Count", w)
+	case "Probabilities":
+		whiteBallProbability := make(map[int]float64)
+		megaBallProbability := make(map[int]float64)
+		findProbabilities(whiteBalls, whiteBallProbability)
+		findProbabilities(megaBall, megaBallProbability)
+		barGraph(whiteBallProbability, "Mega Millions White Ball Probability", "Probability %", w)
+		barGraph(megaBallProbability, "Mega Millions Mega Ball Probability", "Probability %", w)
+	case "Top5":
+		top5White := topNNumbers(whiteBalls, 5)
+		top5Mega := topNNumbers(megaBall, 5)
+		var whiteList strings.Builder
 
-	barGraph(whiteBalls, "Mega Millions White Ball Count", "White Ball Count")
-	barGraph(megaBall, "Mega Millions Mega Ball Count", "Mega Ball Count")
-	barGraph(whiteBallProbability, "Mega Millions White Ball Probability", "Probability %")
-	barGraph(megaBallProbability, "Mega Millions Mega Ball Probability", "Probability %")
-
-	fmt.Println(topNNumbers(whiteBalls, 5))
+		whiteList.WriteString(fmt.Sprintf("%-15s %-15s %-15s %-15s\n", "White Ball", "Count", "Mega Ball", "Count"))
+		for idx, ball := range top5White {
+			whiteList.WriteString(fmt.Sprintf("%-15d %-15d %-15d %-15d\n", ball[0], ball[1], top5Mega[idx][0], top5Mega[idx][1]))
+		}
+		fmt.Fprintln(w, whiteList.String())
+	}
 }
