@@ -46,6 +46,15 @@ func AnalyzePowerball(db *sql.DB, w io.Writer, option string) {
 			whiteList.WriteString(fmt.Sprintf("%-15d %-15d %-15d %-15d\n", ball[0], ball[1], top5Power[idx][0], top5Power[idx][1]))
 		}
 		fmt.Fprintln(w, whiteList.String())
+	case "Monte Carlo":
+		whiteBalls, yellowBall := monteCarlo(whiteBalls, powerBall)
+		var numsToPick strings.Builder
+		numsToPick.WriteString("\nWhite Balls: ")
+		for _, val := range whiteBalls {
+			numsToPick.WriteString(fmt.Sprintf("%d, ", val[0]))
+		}
+		numsToPick.WriteString(fmt.Sprintf("Powerball: %d\n", yellowBall[0][0]))
+		fmt.Fprintln(w, numsToPick.String())
 	}
 
 }

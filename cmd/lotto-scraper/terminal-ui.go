@@ -41,7 +41,7 @@ var analysisFuncs = map[string]func(db *sql.DB, w io.Writer, option string){
 	"Mega Millions": analysis.AnalyzeMegaMillions,
 	"Powerball":     analysis.AnalyzePowerball,
 }
-var analysisOptions = []string{"Counts", "Probabilities", "Top5"}
+var analysisOptions = []string{"Counts", "Probabilities", "Top5", "Monte Carlo"}
 var gameOptions = []string{"Mega Millions", "Powerball"}
 var scrapeFuncs = map[string]func(db *sql.DB, w io.Writer){
 	"Mega Millions": scraper.ScrapeMegaMillions,
@@ -178,6 +178,9 @@ func (m model) View() string {
 		b.WriteString(fmt.Sprintf("What information do you want for %s\n", m.selectedGame))
 	case screenAnalysisRunning:
 		b.WriteString(fmt.Sprintf("Getting %s for %s\n", m.selectedAnalysis, m.selectedGame))
+		if m.selectedAnalysis == "Monte Carlo" {
+			b.WriteString("Running simulation...Please wait\n")
+		}
 		for _, line := range m.logs {
 			b.WriteString(line + "\n")
 		}
