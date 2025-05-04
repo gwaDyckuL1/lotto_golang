@@ -28,14 +28,14 @@ func AnalyzePowerball(db *sql.DB, w io.Writer, option string) {
 	switch option {
 	case "Counts":
 		barGraph(whiteBalls, "Powerball White Ball Count", "White Ball Count", w)
-		barGraph(powerBall, "Powerball Mega Ball Count", "Mega Ball Count", w)
+		barGraph(powerBall, "Powerball Powerball Count", "Powerball Count", w)
 	case "Probabilities":
 		whiteBallProbability := make(map[int]float64)
 		powerBallProbability := make(map[int]float64)
 		findProbabilities(whiteBalls, whiteBallProbability)
 		findProbabilities(powerBall, powerBallProbability)
 		barGraph(whiteBallProbability, "Powerball White Ball Probability", "Probability %", w)
-		barGraph(powerBallProbability, "Powerball Mega Ball Probability", "Probability %", w)
+		barGraph(powerBallProbability, "Powerball Powerball Probability", "Probability %", w)
 	case "Top5":
 		top5White := topNNumbers(whiteBalls, 5)
 		top5Power := topNNumbers(powerBall, 5)
