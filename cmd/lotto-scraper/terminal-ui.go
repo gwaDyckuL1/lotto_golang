@@ -40,12 +40,14 @@ type model struct {
 var analysisFuncs = map[string]func(db *sql.DB, w io.Writer, option string){
 	"Mega Millions": analysis.AnalyzeMegaMillions,
 	"Powerball":     analysis.AnalyzePowerball,
+	"WA Lotto":      analysis.AnalyzeWALotto,
 }
 var analysisOptions = []string{"Counts", "Probabilities", "Top5", "Monte Carlo"}
-var gameOptions = []string{"Mega Millions", "Powerball"}
+var gameOptions = []string{"Mega Millions", "Powerball", "WA Lotto"}
 var scrapeFuncs = map[string]func(db *sql.DB, w io.Writer){
 	"Mega Millions": scraper.ScrapeMegaMillions,
 	"Powerball":     scraper.ScrapingPowerBall,
+	"WA Lotto":      scraper.ScrapingWALotto,
 }
 
 func mainTeaTerminal(db *sql.DB) {
