@@ -33,16 +33,16 @@ type Model struct {
 type screen int
 
 var analysisChoices = []string{"Get / Update Game Data", "Count Balls", "Get Probabilities", "Monte Carlo", "Back to Game Select"}
-var gameChoices = []string{"Powerball", "Mega Million", "WA Lotto"}
+var gameChoices = []string{"Powerball", "Mega Millions", "WA Lotto"}
 var analysisFuncs = map[string]func(string, *sql.DB) string{
 	"Count Balls":       analysis.CountBalls,
 	"Get Probabilities": analysis.Probabilities,
 	"Monte Carlo":       analysis.MonteCarlo,
 }
 var scrapingFuncs = map[string]func(*sql.DB) string{
-	"Powerball":    scraper.ScrapingPowerBall,
-	"Mega Million": scraper.ScrapeMegaMillions,
-	"WA Lotto":     scraper.ScrapingWALotto,
+	"Powerball":     scraper.ScrapingPowerBall,
+	"Mega Millions": scraper.ScrapeMegaMillions,
+	"WA Lotto":      scraper.ScrapingWALotto,
 }
 
 func runAnalysisCmd(game string, option string, db *sql.DB) tea.Cmd {

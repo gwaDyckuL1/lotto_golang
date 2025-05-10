@@ -74,7 +74,7 @@ func ScrapeMegaMillions(db *sql.DB) string {
 	}
 
 	stmt, err := db.Prepare(`
-		INSERT INTO Mega_Million (PlayDate, Ball1, Ball2, Ball3, Ball4, Ball5, SpecialBall, Megaplier)
+		INSERT INTO Mega_Millions (PlayDate, Ball1, Ball2, Ball3, Ball4, Ball5, SpecialBall, Megaplier)
 		VALUES (?,?,?,?,?,?,?,?)
 	`)
 	if err != nil {
@@ -102,7 +102,7 @@ func ScrapeMegaMillions(db *sql.DB) string {
 
 func createMegaTable(db *sql.DB) {
 	createTableSQL := `
-	CREATE TABLE IF NOT EXISTS Mega_Million (
+	CREATE TABLE IF NOT EXISTS Mega_Millions (
 	PlayDate STRING NOT NULL PRIMARY KEY,
 	Ball1 INTEGER,
 	Ball2 INTEGER,
@@ -123,7 +123,7 @@ func createMegaTable(db *sql.DB) {
 func getMostCurrentDate(db *sql.DB) time.Time {
 	var mostRecent sql.NullString
 
-	err := db.QueryRow("SELECT MAX(PlayDate) FROM Mega_Million").Scan(&mostRecent)
+	err := db.QueryRow("SELECT MAX(PlayDate) FROM Mega_Millions").Scan(&mostRecent)
 	if err != nil {
 		log.Fatal(err)
 	}

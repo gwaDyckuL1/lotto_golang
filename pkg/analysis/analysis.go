@@ -3,8 +3,13 @@ package analysis
 import (
 	"database/sql"
 	"fmt"
+	"image/color"
 	"log"
 	"strconv"
+
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
 )
 
 type Game struct {
@@ -27,15 +32,54 @@ var game = map[string]Game{
 }
 
 func makeBarChart[T int | float64](whiteBallMap, specialBallMap map[int]T, g Game, countOrProb string) string {
+	p := plot.New()
+	p.Title.Text = fmt.Sprintf("%s\nBall %s", g.Name, countOrProb)
+	p.Y.Label.Text = countOrProb
 
-	complete := fmt.Sprintf("Completed making bar graph for %s by %s\n", g.Name, countOrProb)
+	whiteValues := make(plotter.Values, 0, len(whiteBallMap))
+	specialValues := make(plotter.Values, 0, len(whiteBallMap))
+	xLabels := make([]string, 0, len(whiteBallMap))
+
+	for i := 1; i <= g.MaxWhiteBall; i++ {
+		whiteValues = append(whiteValues, float64(whiteBallMap[i]))
+		specialValues = append(specialValues, float64(specialBallMap[i]))
+		xLabels = append(xLabels, fmt.Sprintf("%d", i))
+	}
+
+	wBar, err := plotter.NewBarChart(whiteValues, vg.Points(5))
+	if err != nil {
+		return fmt.Sprintln("Ran into a problem creating wBar", err)
+	}
+	wBar.LineStyle.Width = vg.Length(0)
+	wBar.Color = color.RGBA{R: 0, G: 0, B: 255, A: 255}
+
+	sBar, err := plotter.NewBarChart(specialValues, vg.Points(5))
+	if err != nil {
+		return fmt.Sprintln("Ran into a problem creating sBar", err)
+	}
+	sBar.LineStyle.Width = vg.Length(0)
+	sBar.Color = color.RGBA{R: 255, G: 215, B: 0, A: 255}
+
+	wBar.Offset = -vg.Points(2.5)
+	sBar.Offset = vg.Points(2.5)
+
+	p.Add(wBar, sBar)
+	p.NominalX(xLabels...)
+
+	tableName := "graphs/" + g.Name + countOrProb + ".png"
+	width := vg.Length(len(whiteBallMap)) * vg.Points(15)
+	height := vg.Inch * 6
+
+	p.Save(width, height, tableName)
+
+	complete := fmt.Sprintf("Completed making bar graph for %s by %s\n\nLook in the graphs folder.", g.Name, countOrProb)
 	return complete
 }
 
 func CountBalls(gameName string, db *sql.DB) string {
 	g := game[gameName]
 	whiteBallMap, specialBallMap := getData(g, db)
-	return makeBarChart(whiteBallMap, specialBallMap, g, "count")
+	return makeBarChart(whiteBallMap, specialBallMap, g, "Count")
 }
 
 func getData(g Game, db *sql.DB) (map[int]int, map[int]int) {
