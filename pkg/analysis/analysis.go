@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"math/rand/v2"
+	"sort"
 	"strconv"
 
 	"gonum.org/v1/plot"
@@ -163,7 +165,108 @@ func Probabilities(gameName string, db *sql.DB) string {
 }
 
 func MonteCarlo(gameName string, db *sql.DB) string {
-	s := ""
+	s := "Monty predicts you should pick...\n\n"
+	g := game[gameName]
 
+	whiteBallsCountMap, specialBallsCountMap := getData(g, db)
+
+	totalWhiteBalls, totalSpecialBalls := 0, 0
+
+	for _, val := range whiteBallsCountMap {
+		totalWhiteBalls += val
+	}
+	if g.SpecialBall {
+		for _, val := range specialBallsCountMap {
+			totalSpecialBalls += val
+		}
+	}
+
+	scaleFactor := 1000
+	weightedWhite := []int{}
+	weightedSpecial := []int{}
+
+	for i := 1; i <= g.MaxWhiteBall; i++ {
+		probofNum := float64(whiteBallsCountMap[i]) / float64(totalWhiteBalls)
+		howManyWhiteToAdd := int(probofNum * float64(scaleFactor))
+		for range howManyWhiteToAdd {
+			weightedWhite = append(weightedWhite, i)
+		}
+		if g.SpecialBall && i <= g.MaxSpecialBall {
+			probofSpecial := float64(specialBallsCountMap[i]) / float64(totalSpecialBalls)
+			howManySpeicalToAdd := int(probofSpecial * float64(scaleFactor))
+			for range howManySpeicalToAdd {
+				weightedSpecial = append(weightedSpecial, i)
+			}
+		}
+	}
+
+	montyWhiteBalls := make(map[int]int)
+	montySpecialBalls := make(map[int]int)
+
+	for i := 1; i <= g.MaxWhiteBall; i++ {
+		montyWhiteBalls[i] = 0
+		if g.SpecialBall && i <= g.MaxSpecialBall {
+			montySpecialBalls[i] = 0
+		}
+	}
+
+	if g.SpecialBall {
+		g.NumOfBalls--
+	}
+
+	for i := 0; i < 10000; i++ {
+		rand.Shuffle(len(weightedWhite), func(i, j int) {
+			weightedWhite[i], weightedWhite[j] = weightedWhite[j], weightedWhite[i]
+		})
+		if g.SpecialBall {
+			rand.Shuffle(len(weightedSpecial), func(i, j int) {
+				weightedSpecial[i], weightedSpecial[j] = weightedSpecial[j], weightedSpecial[i]
+			})
+			montySpecialBalls[weightedSpecial[0]]++
+		}
+
+		seen := map[int]bool{}
+		ballCount := 0
+
+		for _, val := range weightedWhite {
+			if !seen[val] {
+				seen[val] = true
+				montyWhiteBalls[val]++
+				ballCount++
+			}
+			if ballCount == g.NumOfBalls {
+				break
+			}
+		}
+	}
+
+	sortedWhiteCount := [][]int{}
+	for key, val := range montyWhiteBalls {
+		sortedWhiteCount = append(sortedWhiteCount, []int{key, val})
+	}
+
+	sort.Slice(sortedWhiteCount, func(i, j int) bool {
+		return sortedWhiteCount[i][1] > sortedWhiteCount[j][1]
+	})
+
+	s += "White Balls to select: "
+	for i := 0; i < g.NumOfBalls; i++ {
+		s += strconv.Itoa(sortedWhiteCount[i][0]) + " "
+	}
+
+	if g.SpecialBall {
+		sortedSpecialCount := [][]int{}
+		for key, val := range montySpecialBalls {
+			sortedSpecialCount = append(sortedSpecialCount, []int{key, val})
+		}
+
+		sort.Slice(sortedSpecialCount, func(i, j int) bool {
+			return sortedSpecialCount[i][1] > sortedSpecialCount[j][1]
+		})
+
+		s += "\nSpecial Ball to select: " + strconv.Itoa(sortedSpecialCount[0][0])
+	}
+	s += "\n\n"
+	s += makeBarChart(montyWhiteBalls, montySpecialBalls, g, "Monty Count")
 	return s
 }
