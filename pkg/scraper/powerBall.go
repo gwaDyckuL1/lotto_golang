@@ -3,7 +3,6 @@ package scraper
 import (
 	"database/sql"
 	"fmt"
-	"io"
 	"log"
 	"net/url"
 	"strconv"
@@ -12,16 +11,16 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func ScrapingPowerBall(db *sql.DB, w io.Writer) {
-
+func ScrapingPowerBall(db *sql.DB) string {
+	s := ""
 	type Drawing struct {
-		Date       string
-		WhiteBall1 int
-		WhiteBall2 int
-		WhiteBall3 int
-		WhiteBall4 int
-		WhiteBall5 int
-		PowerBall  int
+		Date        string
+		Ball1       int
+		Ball2       int
+		Ball3       int
+		Ball4       int
+		Ball5       int
+		SpecialBall int
 	}
 	var eachDraw []Drawing
 	seenDates := make(map[string]bool)
@@ -37,7 +36,7 @@ func ScrapingPowerBall(db *sql.DB, w io.Writer) {
 	for {
 
 		pgURL := pbURL + "&pg=" + strconv.Itoa(pageNum)
-		fmt.Fprintln(w, "Visiting", pgURL)
+		s += fmt.Sprintln("Visited", pgURL)
 		var pageHadCards bool
 		c.OnHTML("div.card-body", func(e *colly.HTMLElement) {
 			pageHadCards = true
@@ -64,17 +63,17 @@ func ScrapingPowerBall(db *sql.DB, w io.Writer) {
 				}
 			})
 
-			dailyDraw.WhiteBall1 = whiteBallList[0]
-			dailyDraw.WhiteBall2 = whiteBallList[1]
-			dailyDraw.WhiteBall3 = whiteBallList[2]
-			dailyDraw.WhiteBall4 = whiteBallList[3]
-			dailyDraw.WhiteBall5 = whiteBallList[4]
+			dailyDraw.Ball1 = whiteBallList[0]
+			dailyDraw.Ball2 = whiteBallList[1]
+			dailyDraw.Ball3 = whiteBallList[2]
+			dailyDraw.Ball4 = whiteBallList[3]
+			dailyDraw.Ball5 = whiteBallList[4]
 
 			powerBall, err := strconv.Atoi(e.ChildText(".powerball"))
 			if err != nil {
 				fmt.Println("Powerball number failed to convert", err)
 			}
-			dailyDraw.PowerBall = powerBall
+			dailyDraw.SpecialBall = powerBall
 
 			if !seenDates[dailyDraw.Date] {
 				eachDraw = append(eachDraw, dailyDraw)
@@ -94,7 +93,7 @@ func ScrapingPowerBall(db *sql.DB, w io.Writer) {
 			if err != nil {
 				break
 			} else {
-				fmt.Fprintln(w, "Scraped Powerball information going back to", date.Format("2006-01-02"))
+				s += fmt.Sprintln("Scraped Powerball information going back to", date.Format("2006-01-02"))
 				break
 			}
 		}
@@ -102,12 +101,8 @@ func ScrapingPowerBall(db *sql.DB, w io.Writer) {
 		pageNum++
 	}
 
-	c.OnScraped(func(_ *colly.Response) {
-		fmt.Fprintln(w, "Finished with powerball")
-	})
-
 	stmt, err := db.Prepare(`
-		INSERT INTO powerBall (PlayDate, WhiteBall1, WhiteBall2, WhiteBall3, WhiteBall4, WhiteBall5, PowerBall)
+		INSERT INTO PowerBall (PlayDate, Ball1, Ball2, Ball3, Ball4, Ball5, SpecialBall)
 		VALUES (?,?,?,?,?,?,?)
 	`)
 	if err != nil {
@@ -117,21 +112,21 @@ func ScrapingPowerBall(db *sql.DB, w io.Writer) {
 
 	for _, draw := range eachDraw {
 		_, err := stmt.Exec(
-			draw.Date, draw.WhiteBall1, draw.WhiteBall2, draw.WhiteBall3, draw.WhiteBall4, draw.WhiteBall5, draw.PowerBall,
+			draw.Date, draw.Ball1, draw.Ball2, draw.Ball3, draw.Ball4, draw.Ball5, draw.SpecialBall,
 		)
 		if err != nil {
 			log.Println("Unable to insert draw date: ", draw.Date, err)
-		} else {
-			fmt.Fprintln(w, "Inserted draw data for date: ", draw.Date)
 		}
 	}
+	s += "New numbers loaded in the database"
+	return s
 }
 
 func creatingURL(db *sql.DB) (string, string) {
 	u, _ := url.Parse("https://www.powerball.com/previous-results?gc=powerball&sd=2024-02-14&ed=2024-04-13")
 	var mostRecent sql.NullString
 
-	err := db.QueryRow("SELECT MAX(PlayDate) FROM powerBall").Scan(&mostRecent)
+	err := db.QueryRow("SELECT MAX(PlayDate) FROM PowerBall").Scan(&mostRecent)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -157,14 +152,14 @@ func creatingURL(db *sql.DB) (string, string) {
 
 func createSQLTable(db *sql.DB) {
 	createTableSQL := `
-	CREATE TABLE IF NOT EXISTS powerBall (
+	CREATE TABLE IF NOT EXISTS PowerBall (
 	PlayDate STRING PRIMARY KEY,
-	WhiteBall1 INTEGER,
-	WhiteBall2 INTEGER,
-	WhiteBall3 INTEGER,
-	WhiteBall4 INTEGER,
-	WhiteBall5 INTEGER,
-	PowerBall INTEGER
+	Ball1 INTEGER,
+	Ball2 INTEGER,
+	Ball3 INTEGER,
+	Ball4 INTEGER,
+	Ball5 INTEGER,
+	SpecialBall INTEGER
 	);`
 
 	_, err := db.Exec(createTableSQL)

@@ -13,20 +13,20 @@ import (
 	"net/url"
 )
 
-func ScrapeMegaMillions(db *sql.DB, w io.Writer) {
-
+func ScrapeMegaMillions(db *sql.DB) string {
+	s := ""
 	type XMLResponse struct {
 		Body string `xml:",chardata"`
 	}
 
 	type Drawing struct {
 		PlayDate    string `json:"PlayDate"`
-		N1          int    `json:"N1"`
-		N2          int    `json:"N2"`
-		N3          int    `json:"N3"`
-		N4          int    `json:"N4"`
-		N5          int    `json:"N5"`
-		MegaBall    int    `json:"MBall"`
+		Ball1       int    `json:"N1"`
+		Ball2       int    `json:"N2"`
+		Ball3       int    `json:"N3"`
+		Ball4       int    `json:"N4"`
+		Ball5       int    `json:"N5"`
+		SpecialBall int    `json:"MBall"`
 		Megaplier   int    `json:"Megaplier"`
 		UpdatedBy   string `json:"UpdatedBy"`
 		UpdatedTime string `json:"UpdatedTime"`
@@ -49,18 +49,18 @@ func ScrapeMegaMillions(db *sql.DB, w io.Writer) {
 
 	u.RawQuery = query.Encode()
 
-	fmt.Fprintln(w, "Visiting:", u)
+	s += fmt.Sprintln("Visited:", u)
 
 	resp, err := http.Get(u.String())
 	if err != nil {
-		fmt.Fprintln(w, "Error: ", err)
-		return
+		problem := fmt.Sprintln("Error: ", err)
+		return problem
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Fprintln(w, "Read error: ", err)
+		log.Fatal("Read error: ", err)
 	}
 
 	var xmlResp XMLResponse
@@ -74,7 +74,7 @@ func ScrapeMegaMillions(db *sql.DB, w io.Writer) {
 	}
 
 	stmt, err := db.Prepare(`
-		INSERT INTO megaMillion (PlayDate, N1, N2, N3, N4, N5, MegaBall, Megaplier)
+		INSERT INTO Mega_Million (PlayDate, Ball1, Ball2, Ball3, Ball4, Ball5, SpecialBall, Megaplier)
 		VALUES (?,?,?,?,?,?,?,?)
 	`)
 	if err != nil {
@@ -89,28 +89,27 @@ func ScrapeMegaMillions(db *sql.DB, w io.Writer) {
 		}
 		_, err = stmt.Exec(
 			parsedTime.Format("2006-01-02"),
-			draw.N1, draw.N2, draw.N3, draw.N4, draw.N5,
-			draw.MegaBall, draw.Megaplier,
+			draw.Ball1, draw.Ball2, draw.Ball3, draw.Ball4, draw.Ball5,
+			draw.SpecialBall, draw.Megaplier,
 		)
 		if err != nil {
 			log.Printf("Insert failed for %s: %v", draw.PlayDate, err)
-		} else {
-			fmt.Fprintln(w, "MegaMillion - Inserted draw:", draw.PlayDate)
 		}
 	}
-	fmt.Fprintln(w, "Scraped Mega Million information going back to", recentDate.Format("2006-01-02"))
+	s += fmt.Sprintln("Scraped Mega Million information going back to", recentDate.Format("2006-01-02"))
+	return s
 }
 
 func createMegaTable(db *sql.DB) {
 	createTableSQL := `
-	CREATE TABLE IF NOT EXISTS megaMillion (
+	CREATE TABLE IF NOT EXISTS Mega_Million (
 	PlayDate STRING NOT NULL PRIMARY KEY,
-	N1 INTEGER,
-	N2 INTEGER,
-	N3 INTEGER,
-	N4 INTEGER,
-	N5 INTEGER,
-	MegaBall INTEGER,
+	Ball1 INTEGER,
+	Ball2 INTEGER,
+	Ball3 INTEGER,
+	Ball4 INTEGER,
+	Ball5 INTEGER,
+	SpecialBall INTEGER,
 	Megaplier INTEGER
 	);`
 
@@ -124,7 +123,7 @@ func createMegaTable(db *sql.DB) {
 func getMostCurrentDate(db *sql.DB) time.Time {
 	var mostRecent sql.NullString
 
-	err := db.QueryRow("SELECT MAX(PlayDate) FROM megaMillion").Scan(&mostRecent)
+	err := db.QueryRow("SELECT MAX(PlayDate) FROM Mega_Million").Scan(&mostRecent)
 	if err != nil {
 		log.Fatal(err)
 	}

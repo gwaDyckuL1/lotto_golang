@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/gwaDyckuL1/lotto-scraper/ui"
 	_ "modernc.org/sqlite"
 )
 
@@ -16,7 +17,8 @@ func main() {
 	}
 	defer db.Close()
 
-	mainTeaTerminal(db)
+	ui.TeaTerminal(db)
+	//mainTeaTerminal(db)
 
 	//scraper.ScrapeMegaMillions(db)
 	//scraper.ScrapingPowerBall(db)
