@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/dustin/go-humanize"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
@@ -268,5 +269,124 @@ func MonteCarlo(gameName string, db *sql.DB) string {
 	}
 	s += "\n\n"
 	s += makeBarChart(montyWhiteBalls, montySpecialBalls, g, "Monty Count")
+	return s
+}
+
+func MontysCostToWin(gameName string, db *sql.DB) string {
+	g := game[gameName]
+	s := fmt.Sprintf("Monty tried to win %s\n\n", g.Name)
+
+	whiteBallCountMap, specialBallCountMap := getData(g, db)
+
+	totalWhiteBalls, totalSpecialBalls := 0, 0
+
+	for key := 1; key <= g.MaxWhiteBall; key++ {
+		totalWhiteBalls += whiteBallCountMap[key]
+	}
+
+	if g.SpecialBall {
+		for key := 1; key <= g.MaxSpecialBall; key++ {
+			totalSpecialBalls += specialBallCountMap[key]
+		}
+	}
+
+	weightedWhiteList := []int{}
+	weightSpecialList := []int{}
+	scaleFactor := 1000.00
+
+	for key, val := range whiteBallCountMap {
+		numProbability := float64(val) / float64(totalWhiteBalls)
+		numOfKey := numProbability * scaleFactor
+		for i := 0; i < int(numOfKey); i++ {
+			weightedWhiteList = append(weightedWhiteList, key)
+		}
+	}
+	if g.SpecialBall {
+		for key, val := range specialBallCountMap {
+			numProbability := float64(val) / float64(totalSpecialBalls)
+			numOfKey := numProbability * scaleFactor
+			for i := 0; i < int(numOfKey); i++ {
+				weightSpecialList = append(weightSpecialList, key)
+			}
+		}
+	}
+
+	query := "SELECT PlayDate,"
+
+	if g.SpecialBall {
+		for i := 1; i < g.NumOfBalls; i++ {
+			query += " Ball" + fmt.Sprintf("%d", i) + ","
+		}
+		query += " SpecialBall"
+	} else {
+		for i := 1; i < g.NumOfBalls; i++ {
+			query += " Ball" + fmt.Sprintf("%d", i) + ","
+		}
+		query += " Ball" + fmt.Sprintf("%d", g.NumOfBalls)
+	}
+	query += fmt.Sprintf(`
+		FROM %s
+		WHERE PlayDate = (
+			SELECT MAX(PlayDate)
+			FROM %s
+		)
+	`, g.Name, g.Name)
+
+	row := db.QueryRow(query)
+	recentDraw := make([]int, g.NumOfBalls)
+	values := make([]interface{}, g.NumOfBalls+1)
+	var date string
+
+	values[0] = &date
+
+	for i := 1; i <= g.NumOfBalls; i++ {
+		values[i] = &recentDraw[i-1]
+	}
+
+	err := row.Scan(values...)
+	if err != nil {
+		log.Fatal("Error scanning rows", err)
+	}
+
+	for i := 0; i < 10000000; i++ {
+		var currentDraw []int
+
+		rand.Shuffle(len(weightedWhiteList), func(i, j int) {
+			weightedWhiteList[i], weightedWhiteList[j] = weightedWhiteList[j], weightedWhiteList[i]
+		})
+		if g.SpecialBall {
+			rand.Shuffle(len(weightSpecialList), func(i, j int) {
+				weightSpecialList[i], weightSpecialList[j] = weightSpecialList[j], weightSpecialList[i]
+			})
+			currentDraw = weightedWhiteList[:g.NumOfBalls-1]
+			sort.Ints(currentDraw)
+			specialBallDrawn := weightSpecialList[0]
+			currentDraw = append(currentDraw, specialBallDrawn)
+		} else {
+			currentDraw = weightedWhiteList[:g.NumOfBalls]
+			sort.Ints(currentDraw)
+		}
+		//fmt.Println(recentDraw, currentDraw)
+		winner := true
+		for i := range recentDraw {
+			if recentDraw[i] != currentDraw[i] {
+				winner = false
+				break
+			}
+		}
+
+		if winner {
+			s += "We found a winner!!\n"
+
+			totalCost := humanize.Comma(int64(g.CostPerPlay * float64(i)))
+			count := humanize.Comma(int64(i + 1))
+			s += fmt.Sprintf("Monty bought %s tickets for a total cost of $%s", count, totalCost)
+
+			return s
+		}
+	}
+	s += "After 10 MILLION runs. No winner\n"
+	totalCost := humanize.Comma(int64(10000000.00 * g.CostPerPlay))
+	s += fmt.Sprintf("It only cost Monty $%s to lose!", totalCost)
 	return s
 }

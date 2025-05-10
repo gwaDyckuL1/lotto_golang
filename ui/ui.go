@@ -32,12 +32,13 @@ type Model struct {
 
 type screen int
 
-var analysisChoices = []string{"Get / Update Game Data", "Count Balls", "Get Probabilities", "Monte Carlo", "Back to Game Select"}
+var analysisChoices = []string{"Get / Update Game Data", "Count Balls", "Get Probabilities", "Monte Carlo", "Monty Looking For A Win", "Back to Game Select"}
 var gameChoices = []string{"Powerball", "Mega Millions", "WA Lotto"}
 var analysisFuncs = map[string]func(string, *sql.DB) string{
-	"Count Balls":       analysis.CountBalls,
-	"Get Probabilities": analysis.Probabilities,
-	"Monte Carlo":       analysis.MonteCarlo,
+	"Count Balls":             analysis.CountBalls,
+	"Get Probabilities":       analysis.Probabilities,
+	"Monte Carlo":             analysis.MonteCarlo,
+	"Monty Looking For A Win": analysis.MontysCostToWin,
 }
 var scrapingFuncs = map[string]func(*sql.DB) string{
 	"Powerball":     scraper.ScrapingPowerBall,
