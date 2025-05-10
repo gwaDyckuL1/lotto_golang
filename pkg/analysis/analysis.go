@@ -66,6 +66,13 @@ func makeBarChart[T int | float64](whiteBallMap, specialBallMap map[int]T, g Gam
 	p.Add(wBar, sBar)
 	p.NominalX(xLabels...)
 
+	p.Legend.Add("White Balls", wBar)
+	if g.SpecialBall {
+		p.Legend.Add("Sepcial Ball", sBar)
+	}
+	p.Legend.Top = true
+	p.Legend.Left = true
+
 	tableName := "graphs/" + g.Name + countOrProb + ".png"
 	width := vg.Length(len(whiteBallMap)) * vg.Points(15)
 	height := vg.Inch * 6
@@ -129,13 +136,30 @@ func getNumsByColumn(db *sql.DB, table string, columnName string, theMap map[int
 		}
 		theMap[number] += count
 	}
-
 }
 
 func Probabilities(gameName string, db *sql.DB) string {
-	s := ""
+	g := game[gameName]
+	whiteBallCount, specialBallCount := getData(g, db)
 
-	return s
+	whiteTotal, specialTotal := 0, 0
+
+	for _, val := range whiteBallCount {
+		whiteTotal += val
+	}
+	for _, val := range specialBallCount {
+		specialTotal += val
+	}
+	whiteBallProb := make(map[int]float64)
+	specialBallProb := make(map[int]float64)
+
+	for i := 1; i <= g.MaxWhiteBall; i++ {
+		whiteBallProb[i] = float64(whiteBallCount[i]) / float64(whiteTotal) * 100.00
+		if i <= g.MaxSpecialBall {
+			specialBallProb[i] = float64(specialBallCount[i]) / float64(specialTotal) * 100.00
+		}
+	}
+	return makeBarChart(whiteBallProb, specialBallProb, g, "Probability")
 }
 
 func MonteCarlo(gameName string, db *sql.DB) string {
