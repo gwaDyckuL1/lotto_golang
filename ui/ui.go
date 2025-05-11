@@ -33,7 +33,7 @@ type Model struct {
 type screen int
 
 var analysisChoices = []string{"Get / Update Game Data", "Count Balls", "Get Probabilities", "Monte Carlo", "Monty Looking For A Win", "Back to Game Select"}
-var gameChoices = []string{"Powerball", "Mega Millions", "WA Lotto"}
+var gameChoices = []string{"PowerBall", "Mega_Millions", "WA_Lotto"}
 var analysisFuncs = map[string]func(string, *sql.DB) string{
 	"Count Balls":             analysis.CountBalls,
 	"Get Probabilities":       analysis.Probabilities,
@@ -41,9 +41,9 @@ var analysisFuncs = map[string]func(string, *sql.DB) string{
 	"Monty Looking For A Win": analysis.MontysCostToWin,
 }
 var scrapingFuncs = map[string]func(*sql.DB) string{
-	"Powerball":     scraper.ScrapingPowerBall,
-	"Mega Millions": scraper.ScrapeMegaMillions,
-	"WA Lotto":      scraper.ScrapingWALotto,
+	"PowerBall":     scraper.ScrapingPowerBall,
+	"Mega_Millions": scraper.ScrapeMegaMillions,
+	"WA_Lotto":      scraper.ScrapingWALotto,
 }
 
 func runAnalysisCmd(game string, option string, db *sql.DB) tea.Cmd {
@@ -64,8 +64,9 @@ func runScrapingCmd(game string, db *sql.DB) tea.Cmd {
 
 func initialModel(db *sql.DB) Model {
 	return Model{
-		screen: screenIntro,
-		db:     db,
+		screen:  screenIntro,
+		db:      db,
+		choices: []string{"Press Enter to Continue"},
 	}
 }
 
@@ -97,10 +98,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case screenMain:
 				m.game = m.choices[m.cursor]
 				m.cursor = 0
-				m.choices = analysisChoices
 				m.screen = screenSelectAnalysis
+				query := `SELECT name FROM sqlite_master WHERE type='table' AND name=?;`
+				var name string
+				err := m.db.QueryRow(query, m.game).Scan(&name)
+				if err != nil {
+					m.choices = []string{"Get / Update Game Data"}
+				} else {
+					m.choices = analysisChoices
+				}
 			case screenResults:
 				m.screen = screenSelectAnalysis
+				m.choices = analysisChoices
 			case screenSelectAnalysis:
 				selected := m.choices[m.cursor]
 				switch selected {
