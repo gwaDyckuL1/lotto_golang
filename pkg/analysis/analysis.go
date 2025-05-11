@@ -349,23 +349,31 @@ func MontysCostToWin(gameName string, db *sql.DB) string {
 	}
 
 	for i := 0; i < 10000000; i++ {
+		seen := make(map[int]bool)
 		var currentDraw []int
 
-		rand.Shuffle(len(weightedWhiteList), func(i, j int) {
-			weightedWhiteList[i], weightedWhiteList[j] = weightedWhiteList[j], weightedWhiteList[i]
-		})
 		if g.SpecialBall {
-			rand.Shuffle(len(weightSpecialList), func(i, j int) {
-				weightSpecialList[i], weightSpecialList[j] = weightSpecialList[j], weightSpecialList[i]
-			})
-			currentDraw = weightedWhiteList[:g.NumOfBalls-1]
+			for len(currentDraw) < g.NumOfBalls-1 {
+				pick := weightedWhiteList[rand.IntN(len(weightedWhiteList))]
+				if !seen[pick] {
+					currentDraw = append(currentDraw, pick)
+					seen[pick] = true
+				}
+			}
 			sort.Ints(currentDraw)
-			specialBallDrawn := weightSpecialList[0]
-			currentDraw = append(currentDraw, specialBallDrawn)
+			specialPick := weightSpecialList[rand.IntN(len(weightSpecialList))]
+			currentDraw = append(currentDraw, specialPick)
 		} else {
-			currentDraw = weightedWhiteList[:g.NumOfBalls]
+			for len(currentDraw) < g.NumOfBalls {
+				pick := weightedWhiteList[rand.IntN(len(weightedWhiteList))]
+				if !seen[pick] {
+					currentDraw = append(currentDraw, pick)
+					seen[pick] = true
+				}
+			}
 			sort.Ints(currentDraw)
 		}
+
 		//fmt.Println(recentDraw, currentDraw)
 		winner := true
 		for i := range recentDraw {
