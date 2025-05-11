@@ -18,10 +18,4 @@ func main() {
 	defer db.Close()
 
 	ui.TeaTerminal(db)
-	//mainTeaTerminal(db)
-
-	//scraper.ScrapeMegaMillions(db)
-	//scraper.ScrapingPowerBall(db)
-	//scraper.ScrapingPowerBall2(db)
-	//analysis.AnalyzeMegaMillions(db)
 }
