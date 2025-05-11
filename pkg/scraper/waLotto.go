@@ -14,7 +14,7 @@ func ScrapingWALotto(db *sql.DB) string {
 	s := ("We've entered scraping for WA Lotto")
 
 	createSQLTable := `
-	CREATE TABLE IF NOT EXISTS WA_Lotto (
+	CREATE TABLE IF NOT EXISTS 'WA Lotto' (
 	PlayDate STRING PRIMARY KEY,
 	Ball1 INT,
 	Ball2 INT,
@@ -30,9 +30,9 @@ func ScrapingWALotto(db *sql.DB) string {
 	}
 
 	var mostRecentSQLDate sql.NullString
-	err = db.QueryRow("SELECT MAX(PlayDate) FROM WA_Lotto").Scan(&mostRecentSQLDate)
+	err = db.QueryRow("SELECT MAX(PlayDate) FROM 'WA Lotto'").Scan(&mostRecentSQLDate)
 	if err != nil {
-		log.Fatal("Can't pulled latest date in WA_Lotto", err)
+		log.Fatal("Can't pulled latest date in WA Lotto", err)
 	}
 
 	var newestDate time.Time
@@ -78,7 +78,7 @@ func ScrapingWALotto(db *sql.DB) string {
 		})
 
 		stmt, err := db.Prepare(`
-		INSERT OR IGNORE INTO WA_Lotto (PlayDate, Ball1, Ball2, Ball3, Ball4, Ball5, Ball6)
+		INSERT OR IGNORE INTO 'WA Lotto' (PlayDate, Ball1, Ball2, Ball3, Ball4, Ball5, Ball6)
 		VALUES (?,?,?,?,?,?,?)
 		`)
 		if err != nil {

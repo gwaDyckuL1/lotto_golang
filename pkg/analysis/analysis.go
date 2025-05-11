@@ -24,13 +24,13 @@ type Game struct {
 	CostPerPlay    float64
 }
 
-var Powerball = Game{Name: "PowerBall", NumOfBalls: 6, SpecialBall: true, MaxWhiteBall: 69, MaxSpecialBall: 26, CostPerPlay: 2}
+var Powerball = Game{Name: "Powerball", NumOfBalls: 6, SpecialBall: true, MaxWhiteBall: 69, MaxSpecialBall: 26, CostPerPlay: 2}
 var MegaMillions = Game{Name: "Mega_Millions", NumOfBalls: 6, SpecialBall: true, MaxWhiteBall: 70, MaxSpecialBall: 24, CostPerPlay: 5}
-var WAlotto = Game{Name: "WA_Lotto", NumOfBalls: 6, SpecialBall: false, MaxWhiteBall: 49, CostPerPlay: 0.50}
+var WAlotto = Game{Name: "'WA Lotto'", NumOfBalls: 6, SpecialBall: false, MaxWhiteBall: 49, CostPerPlay: 0.50}
 
 var game = map[string]Game{
 	"Powerball":     Powerball,
-	"Mega Millions": MegaMillions,
+	"Mega_Millions": MegaMillions,
 	"WA Lotto":      WAlotto,
 }
 
