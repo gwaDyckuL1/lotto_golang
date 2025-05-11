@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
+	_ "modernc.org/sqlite"
 )
 
 var (
