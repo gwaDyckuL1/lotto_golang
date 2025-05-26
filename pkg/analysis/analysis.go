@@ -443,9 +443,11 @@ func MontysCostToWin(gameName string, db *sql.DB) string {
 			return s
 		}
 	}
-	s += "After 10 MILLION runs. No winner\n"
+	s += "After 10 MILLION runs. You did not win the grand prize\n"
 	totalCost := humanize.Comma(int64(10000000.00 * g.CostPerPlay))
-	s += fmt.Sprintf("It only cost Monty $%s to lose!", totalCost)
+	winnings := humanize.Comma(int64(totalWinnings))
+
+	s += fmt.Sprintf("On the way to spending $%s.\nYou won $%s for matching some numbers", totalCost, winnings)
 	return s
 }
 
