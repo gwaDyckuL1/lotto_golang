@@ -102,11 +102,11 @@ func ScrapingPowerBall(db *sql.DB) string {
 	}
 
 	stmt, err := db.Prepare(`
-		INSERT INTO PowerBall (PlayDate, Ball1, Ball2, Ball3, Ball4, Ball5, SpecialBall)
+		INSERT INTO Powerball (PlayDate, Ball1, Ball2, Ball3, Ball4, Ball5, SpecialBall)
 		VALUES (?,?,?,?,?,?,?)
 	`)
 	if err != nil {
-		log.Fatal("Unable to prepare powerBall table: ", err)
+		log.Fatal("Unable to prepare Powerball table: ", err)
 	}
 	defer stmt.Close()
 
@@ -126,7 +126,7 @@ func creatingURL(db *sql.DB) (string, string) {
 	u, _ := url.Parse("https://www.powerball.com/previous-results?gc=powerball&sd=2024-02-14&ed=2024-04-13")
 	var mostRecent sql.NullString
 
-	err := db.QueryRow("SELECT MAX(PlayDate) FROM PowerBall").Scan(&mostRecent)
+	err := db.QueryRow("SELECT MAX(PlayDate) FROM Powerball").Scan(&mostRecent)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func creatingURL(db *sql.DB) (string, string) {
 
 func createSQLTable(db *sql.DB) {
 	createTableSQL := `
-	CREATE TABLE IF NOT EXISTS PowerBall (
+	CREATE TABLE IF NOT EXISTS Powerball (
 	PlayDate STRING PRIMARY KEY,
 	Ball1 INTEGER,
 	Ball2 INTEGER,
