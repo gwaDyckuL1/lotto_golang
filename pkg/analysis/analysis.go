@@ -86,11 +86,11 @@ func makeBarChart[T int | float64](whiteBallMap, specialBallMap map[int]T, g Gam
 	return complete
 }
 
-func CountBalls(gameName string, db *sql.DB) string {
-	g := game[gameName]
-	whiteBallMap, specialBallMap := getData(g, db)
-	return makeBarChart(whiteBallMap, specialBallMap, g, "Count")
-}
+// func CountBalls(gameName string, db *sql.DB) string {
+// 	g := game[gameName]
+// 	whiteBallMap, specialBallMap := getData(g, db)
+// 	return makeBarChart(whiteBallMap, specialBallMap, g, "Count")
+// }
 
 func getData(g Game, db *sql.DB) (map[int]int, map[int]int) {
 	whiteBallMap := make(map[int]int)
@@ -141,28 +141,26 @@ func getNumsByColumn(db *sql.DB, table string, columnName string, theMap map[int
 	}
 }
 
-func Probabilities(gameName string, db *sql.DB) string {
-	g := game[gameName]
-	whiteBallCount, specialBallCount := getData(g, db)
+func Probabilities(whiteBallMap, specialBallMap map[int]int, g Game, db *sql.DB) (map[int]float64, map[int]float64) {
 
 	whiteTotal, specialTotal := 0, 0
 
-	for _, val := range whiteBallCount {
+	for _, val := range whiteBallMap {
 		whiteTotal += val
 	}
-	for _, val := range specialBallCount {
+	for _, val := range specialBallMap {
 		specialTotal += val
 	}
 	whiteBallProb := make(map[int]float64)
 	specialBallProb := make(map[int]float64)
 
 	for i := 1; i <= g.MaxWhiteBall; i++ {
-		whiteBallProb[i] = float64(whiteBallCount[i]) / float64(whiteTotal) * 100.00
+		whiteBallProb[i] = float64(whiteBallMap[i]) / float64(whiteTotal) * 100.00
 		if i <= g.MaxSpecialBall {
-			specialBallProb[i] = float64(specialBallCount[i]) / float64(specialTotal) * 100.00
+			specialBallProb[i] = float64(specialBallMap[i]) / float64(specialTotal) * 100.00
 		}
 	}
-	return makeBarChart(whiteBallProb, specialBallProb, g, "Probability")
+	return whiteBallProb, specialBallProb
 }
 
 func MonteCarlo(gameName string, db *sql.DB) string {
@@ -396,5 +394,19 @@ func MontysCostToWin(gameName string, db *sql.DB) string {
 	s += "After 10 MILLION runs. No winner\n"
 	totalCost := humanize.Comma(int64(10000000.00 * g.CostPerPlay))
 	s += fmt.Sprintf("It only cost Monty $%s to lose!", totalCost)
+	return s
+}
+
+func ReviewStats(gameName string, db *sql.DB) string {
+	g := game[gameName]
+
+	whiteBallMap, specialBallMap := getData(g, db)
+
+	makeBarChart(whiteBallMap, specialBallMap, g, "Count")
+
+	whiteBallProbabilities, specialBallProbabilities := Probabilities(whiteBallMap, specialBallMap, g, db)
+	makeBarChart(whiteBallProbabilities, specialBallProbabilities, g, "Probability")
+
+	s := fmt.Sprintf("Finished creating graphs for %s\nThey can be found in the graphs folder", g.Name)
 	return s
 }

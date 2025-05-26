@@ -32,11 +32,10 @@ type Model struct {
 
 type screen int
 
-var analysisChoices = []string{"Get / Update Game Data", "Count Balls", "Get Probabilities", "Monte Carlo", "Monty Looking For A Win", "Back to Game Select"}
+var analysisChoices = []string{"Get / Update Game Data", "Review Statistics", "Monte Carlo", "Monty Looking For A Win", "Back to Game Select"}
 var gameChoices = []string{"Powerball", "Mega_Millions", "WA Lotto"}
 var analysisFuncs = map[string]func(string, *sql.DB) string{
-	"Count Balls":             analysis.CountBalls,
-	"Get Probabilities":       analysis.Probabilities,
+	"Review Statistics":       analysis.ReviewStats,
 	"Monte Carlo":             analysis.MonteCarlo,
 	"Monty Looking For A Win": analysis.MontysCostToWin,
 }
