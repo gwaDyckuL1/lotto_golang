@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"log"
 	"math/rand/v2"
+	"slices"
 	"sort"
 	"strconv"
 
@@ -22,11 +23,37 @@ type Game struct {
 	MaxWhiteBall   int
 	MaxSpecialBall int
 	CostPerPlay    float64
+	WaysToWin      map[string]int
 }
 
-var Powerball = Game{Name: "Powerball", NumOfBalls: 6, SpecialBall: true, MaxWhiteBall: 69, MaxSpecialBall: 26, CostPerPlay: 2}
-var MegaMillions = Game{Name: "Mega_Millions", NumOfBalls: 6, SpecialBall: true, MaxWhiteBall: 70, MaxSpecialBall: 24, CostPerPlay: 5}
-var WAlotto = Game{Name: "'WA Lotto'", NumOfBalls: 6, SpecialBall: false, MaxWhiteBall: 49, CostPerPlay: 0.50}
+var Powerball = Game{Name: "Powerball", NumOfBalls: 6, SpecialBall: true, MaxWhiteBall: 69, MaxSpecialBall: 26, CostPerPlay: 2, WaysToWin: map[string]int{
+	"0:true":  4,
+	"1:true":  4,
+	"2:true":  7,
+	"3:false": 7,
+	"3:true":  100,
+	"4:false": 100,
+	"4:true":  50000,
+	"5:false": 1000000,
+	"5:true":  0,
+}}
+var MegaMillions = Game{Name: "Mega_Millions", NumOfBalls: 6, SpecialBall: true, MaxWhiteBall: 70, MaxSpecialBall: 24, CostPerPlay: 5, WaysToWin: map[string]int{
+	"0:true":  10,
+	"1:true":  14,
+	"2:true":  20,
+	"3:false": 20,
+	"3:true":  400,
+	"4:false": 1000,
+	"4:true":  20000,
+	"5:false": 2000000,
+	"5:true":  0,
+}}
+var WAlotto = Game{Name: "'WA Lotto'", NumOfBalls: 6, SpecialBall: false, MaxWhiteBall: 49, CostPerPlay: 0.50, WaysToWin: map[string]int{
+	"3:false": 3,
+	"4:false": 30,
+	"5:false": 1000,
+	"6:false": 0,
+}}
 
 var game = map[string]Game{
 	"Powerball":     Powerball,
@@ -85,12 +112,6 @@ func makeBarChart[T int | float64](whiteBallMap, specialBallMap map[int]T, g Gam
 	complete := fmt.Sprintf("Completed making bar graph for %s by %s\n\nLook in the graphs folder.", g.Name, countOrProb)
 	return complete
 }
-
-// func CountBalls(gameName string, db *sql.DB) string {
-// 	g := game[gameName]
-// 	whiteBallMap, specialBallMap := getData(g, db)
-// 	return makeBarChart(whiteBallMap, specialBallMap, g, "Count")
-// }
 
 func getData(g Game, db *sql.DB) (map[int]int, map[int]int) {
 	whiteBallMap := make(map[int]int)
@@ -346,6 +367,7 @@ func MontysCostToWin(gameName string, db *sql.DB) string {
 		log.Fatal("Error scanning rows", err)
 	}
 
+	totalWinnings := 0
 	for i := 0; i < 10000000; i++ {
 		seen := make(map[int]bool)
 		var currentDraw []int
@@ -358,7 +380,6 @@ func MontysCostToWin(gameName string, db *sql.DB) string {
 					seen[pick] = true
 				}
 			}
-			sort.Ints(currentDraw)
 			specialPick := weightSpecialList[rand.IntN(len(weightSpecialList))]
 			currentDraw = append(currentDraw, specialPick)
 		} else {
@@ -369,15 +390,35 @@ func MontysCostToWin(gameName string, db *sql.DB) string {
 					seen[pick] = true
 				}
 			}
-			sort.Ints(currentDraw)
 		}
 
-		//fmt.Println(recentDraw, currentDraw)
-		winner := true
-		for i := range recentDraw {
-			if recentDraw[i] != currentDraw[i] {
-				winner = false
-				break
+		// currentDraw = []int{28, 12, 52, 18, 48, 5}
+		// fmt.Println(recentDraw[:len(recentDraw)-1], currentDraw[:len(currentDraw)-1])
+		winner := false
+		whiteBallCount := 0
+		specialBallDrawn := false
+		if g.SpecialBall {
+			for _, num := range currentDraw[:len(currentDraw)-1] {
+				if _, found := slices.BinarySearch(recentDraw[:len(recentDraw)-1], num); found {
+					whiteBallCount++
+				}
+			}
+			if currentDraw[len(currentDraw)-1] == recentDraw[len(recentDraw)-1] {
+				specialBallDrawn = true
+			}
+		} else {
+			for _, num := range currentDraw {
+				if _, found := slices.BinarySearch(recentDraw, num); found {
+					whiteBallCount++
+				}
+			}
+		}
+
+		result := fmt.Sprintf("%d:%t", whiteBallCount, specialBallDrawn)
+		if _, exists := g.WaysToWin[result]; exists {
+			totalWinnings += g.WaysToWin[result]
+			if g.WaysToWin[result] == 0 {
+				winner = true
 			}
 		}
 
@@ -386,7 +427,18 @@ func MontysCostToWin(gameName string, db *sql.DB) string {
 
 			totalCost := humanize.Comma(int64(g.CostPerPlay * float64(i)))
 			count := humanize.Comma(int64(i + 1))
-			s += fmt.Sprintf("Monty bought %s tickets for a total cost of $%s", count, totalCost)
+			winnings := humanize.Comma(int64(totalWinnings))
+			profit := humanize.Comma(int64(float64(totalWinnings) - g.CostPerPlay*float64(i)))
+			loss := humanize.Comma(int64(g.CostPerPlay*float64(i) - float64(totalWinnings)))
+
+			s += fmt.Sprintf("Monty bought %s tickets for a total cost of $%s\n", count, totalCost)
+			s += fmt.Sprintf("On the way to the grand prize, Monty also won $%s\n", winnings)
+
+			if g.CostPerPlay*float64(i)-float64(totalWinnings) > 0 {
+				s += fmt.Sprintf("For a total cost to win of $%s", loss)
+			} else {
+				s += fmt.Sprintf("For an additional profit of %s", profit)
+			}
 
 			return s
 		}
